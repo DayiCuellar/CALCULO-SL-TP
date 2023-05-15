@@ -25,7 +25,7 @@ string rect_fondo = "rect_fondo",
        label_stop = "label_stop",
        label_profit = "label_profit";
 //---
-color fondo_rect = clrGray,
+color fondo_rect = clrBlue,
       fondo_edits = clrWhite,
       letras_edits = clrBlack,
       letras_label = clrWhite;
@@ -47,6 +47,11 @@ uint const separacion = 10;
 int X = 0,
     Y = 0,
     tamanho_letras_label = 10;
+
+//--- FUNCIONAMIENTO DEL ASESOR EXPERTO
+double stopp_loss = 0,
+       takke_profit = 0;
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
 //+------------------------------------------------------------------+
@@ -71,8 +76,17 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-//--- hola
-}
+   Poner_SL(stopp_loss);
+   Poner_TP(takke_profit);
+//+------------------------------------------------------------------+
+//|                  VALORES EN PANTALLA
+//+------------------------------------------------------------------+
+   Comment(
+      "stopp_loss   ", stopp_loss, "\n",
+      "takke_profit  ",  takke_profit, "\n",
+      "  "
+   );
+}// FIN DEL ONTICK
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //|                   EVENTOS
@@ -92,6 +106,20 @@ void OnChartEvent(const int id,
          Mover_Objetos(X, Y);
       }
       break;
+   case CHARTEVENT_OBJECT_ENDEDIT: // COGER LOS VALORES DE LOS EDITS
+      if(sparam == edit_sl)
+      {
+         string temp_sl = ObjectGetString(0, edit_sl, OBJPROP_TEXT);
+         stopp_loss = StringToDouble(temp_sl);
+         stopp_loss = NormalizeDouble(stopp_loss, 2);
+      }
+      //---
+      if(sparam == edit_tp)
+      {
+         string temp_tp = ObjectGetString(0, edit_tp, OBJPROP_TEXT);
+         takke_profit = StringToDouble(temp_tp);
+         takke_profit = NormalizeDouble(takke_profit, 2);
+      }
    }
 }
 //+------------------------------------------------------------------+
@@ -152,4 +180,52 @@ void Borrar_Objetos_Panel()
    Borrar_Objeto(edit_sl);
    Borrar_Objeto(edit_tp);
 }
+//+------------------------------------------------------------------+
+void Poner_TP (double _pips_tp)
+{
+   int total = OrdersTotal();
+   for(int i = total - 1; i >= 0; i--)
+   {
+      bool p = OrderSelect(i, SELECT_BY_POS);
+      if(_pips_tp != 0 && OrderTakeProfit() == 0)
+      {
+         if(OrderType() == OP_BUY)
+         {
+            double tempp_tp = OrderOpenPrice() + (_pips_tp * 10 * Point);
+            bool k = OrderModify(OrderTicket(), 0, OrderStopLoss(), tempp_tp, 0);
+         }
+         else if(OrderType() == OP_SELL )
+         {
+            double tempp_tp = OrderOpenPrice() - (_pips_tp * 10 * Point);
+            bool k = OrderModify(OrderTicket(), 0, OrderStopLoss(), tempp_tp, 0);
+         }
+      }
+   }
+}
+//+------------------------------------------------------------------+
+void Poner_SL (double _pips_sl)
+{
+   int total = OrdersTotal();
+   for(int i = total - 1; i >= 0; i--)
+   {
+      bool p = OrderSelect(i, SELECT_BY_POS);
+      //---
+      if(_pips_sl != 0 && OrderStopLoss() == 0)
+      {
+         if(OrderType() == OP_BUY)
+         {
+            double tempp_sl = OrderOpenPrice() - (_pips_sl * 10 * Point);
+            bool k = OrderModify(OrderTicket(), 0, tempp_sl, OrderTakeProfit(), 0);
+         }
+         else if(OrderType() == OP_SELL)
+         {
+            double tempp_sl = OrderOpenPrice() + (_pips_sl * 10 * Point);
+            bool k = OrderModify(OrderTicket(), 0, tempp_sl, OrderTakeProfit(), 0);
+         }
+      }
+   }
+}
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+
 //+------------------------------------------------------------------+
